@@ -1,6 +1,7 @@
 import "./styles.css";
 
 import Phaser from "phaser";
+import { invoke } from "@tauri-apps/api/core";
 import {
   LogicalSize,
   PhysicalPosition,
@@ -8,6 +9,123 @@ import {
   getCurrentWindow,
 } from "@tauri-apps/api/window";
 
+const root = document.getElementById("app");
+
+if (!root) {
+  throw new Error("app root not found");
+}
+
+root.className = "android-launcher";
+root.innerHTML = `
+  <section class="android-panel">
+    <h1>正在启动小猪...</h1>
+    <p class="android-status" data-role="status">正在识别运行平台。</p>
+  </section>
+`;
+
+void bootstrap(root);
+
+async function bootstrap(container: HTMLElement): Promise<void> {
+  let platform = "desktop";
+
+  try {
+    platform = await invoke<string>("runtime_platform");
+  } catch {
+    if (/Android/i.test(navigator.userAgent)) {
+      platform = "android";
+    }
+  }
+
+  if (platform === "android") {
+    await bootAndroidLauncher(container);
+    return;
+  }
+
+  container.className = "pet-shell";
+  container.innerHTML = "";
+  bootDesktopPet();
+}
+
+async function bootAndroidLauncher(container: HTMLElement): Promise<void> {
+  container.className = "android-launcher";
+  container.innerHTML = `
+    <section class="android-panel">
+      <h1>安卓悬浮猪原型</h1>
+      <p>第一阶段先用原生悬浮窗骨架，不直接复用桌面 Phaser 窗口。</p>
+      <p class="android-status" data-role="status">正在检查权限...</p>
+      <div class="android-actions">
+        <button type="button" data-action="request">申请悬浮窗权限</button>
+        <button type="button" data-action="show">显示悬浮猪</button>
+        <button type="button" data-action="hide">隐藏悬浮猪</button>
+      </div>
+    </section>
+  `;
+
+  const status = container.querySelector<HTMLElement>("[data-role=status]");
+  const requestButton = container.querySelector<HTMLButtonElement>(
+    "[data-action=request]",
+  );
+  const showButton = container.querySelector<HTMLButtonElement>(
+    "[data-action=show]",
+  );
+  const hideButton = container.querySelector<HTMLButtonElement>(
+    "[data-action=hide]",
+  );
+
+  if (!status || !requestButton || !showButton || !hideButton) {
+    throw new Error("android launcher controls not found");
+  }
+
+  const refreshStatus = async (): Promise<void> => {
+    try {
+      const granted = await invoke<boolean>("overlay_permission_status");
+      const visible = granted ? await invoke<boolean>("overlay_visible") : false;
+
+      status.textContent = granted
+        ? visible
+          ? "权限已授予，悬浮猪显示中。"
+          : "权限已授予，可以显示悬浮猪。"
+        : "尚未授予悬浮窗权限。";
+    } catch (error) {
+      status.textContent = `状态检查失败：${String(error)}`;
+    }
+  };
+
+  requestButton.addEventListener("click", async () => {
+    try {
+      const granted = await invoke<boolean>("request_overlay_permission");
+      status.textContent = granted
+        ? "权限已授予，可以显示悬浮猪。"
+        : "请在系统设置里授予悬浮窗权限后再回来。";
+    } catch (error) {
+      status.textContent = `申请权限失败：${String(error)}`;
+    }
+  });
+
+  showButton.addEventListener("click", async () => {
+    try {
+      const visible = await invoke<boolean>("show_overlay");
+      status.textContent = visible
+        ? "悬浮猪已显示，可拖动。"
+        : "悬浮猪未显示。";
+    } catch (error) {
+      status.textContent = `显示悬浮猪失败：${String(error)}`;
+    }
+  });
+
+  hideButton.addEventListener("click", async () => {
+    try {
+      await invoke<boolean>("hide_overlay");
+      status.textContent = "悬浮猪已隐藏。";
+    } catch (error) {
+      status.textContent = `隐藏悬浮猪失败：${String(error)}`;
+    }
+  });
+
+  await refreshStatus();
+}
+
+function bootDesktopPet(): void {
 const WINDOW_SIZE = 120;
 const FRAME_SIZE = 100;
 const SPRITE_OFFSET = 10;
@@ -559,3 +677,4 @@ game.canvas.addEventListener("contextmenu", (event) => {
 window.addEventListener("beforeunload", () => {
   game.destroy(true);
 });
+}

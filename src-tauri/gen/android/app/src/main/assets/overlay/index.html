@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Pig Overlay</title>
+    <style>
+      :root {
+        --frame-size: 100px;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+      }
+
+      .frame {
+        width: var(--frame-size);
+        height: var(--frame-size);
+        overflow: hidden;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        transform: translateZ(0);
+      }
+
+      .sheet {
+        background-repeat: no-repeat;
+        transform: translate(0, 0);
+        will-change: transform, background-image;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame" aria-label="pig overlay">
+      <div class="sheet" id="sheet"></div>
+    </div>
+    <script>
+      const dpr = Math.max(window.devicePixelRatio || 1, 1);
+      const frameSize = 100 / dpr;
+
+      document.documentElement.style.setProperty("--frame-size", `${frameSize}px`);
+
+      const frame = document.querySelector(".frame");
+      const sheet = document.getElementById("sheet");
+      const CLIPS = {
+        idle: {
+          image: "./walk.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [4],
+          fps: 1,
+          loop: true,
+        },
+        walk: {
+          image: "./walk.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+          fps: 10,
+          loop: true,
+        },
+        dance: {
+          image: "./dance.png",
+          columns: 5,
+          width: 500,
+          height: 200,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          fps: 20,
+          loop: true,
+        },
+        dragged: {
+          image: "./dragged.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+          fps: 18,
+          loop: true,
+        },
+        fallAsleep: {
+          image: "./fall_asleep.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+          fps: 10,
+          loop: false,
+        },
+        sleepLoop: {
+          image: "./sleep_loop.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+          fps: 8,
+          loop: true,
+        },
+        wakeUp: {
+          image: "./wake_up.png",
+          columns: 3,
+          width: 300,
+          height: 300,
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+          fps: 10,
+          loop: false,
+        },
+      };
+
+      let currentClipName = "idle";
+      let currentFrameIndex = 0;
+      let clipTimer = 0;
+      let state = "Idle";
+      let stateTimer = randomBetween(1500, 3200);
+      let lastTick = performance.now();
+      let dragActive = false;
+      let musicActive = false;
+      let facing = "Left";
+
+      function randomBetween(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function reportActivity(nextState) {
+        if (window.PigOverlayBridge && typeof window.PigOverlayBridge.setActivity === "function") {
+          window.PigOverlayBridge.setActivity(nextState);
+        }
+      }
+
+      function renderFacing() {
+        if (!frame) {
+          return;
+        }
+
+        frame.style.transform =
+          facing === "Right" ? "translateZ(0) scaleX(-1)" : "translateZ(0) scaleX(1)";
+      }
+
+      function setFrame(frame) {
+        const clip = CLIPS[currentClipName];
+        const column = frame % clip.columns;
+        const row = Math.floor(frame / clip.columns);
+        sheet.style.transform = `translate(${-column * frameSize}px, ${-row * frameSize}px)`;
+      }
+
+      function applyClip(name) {
+        const clip = CLIPS[name];
+        currentClipName = name;
+        currentFrameIndex = 0;
+        clipTimer = 0;
+        sheet.style.width = `${clip.width / dpr}px`;
+        sheet.style.height = `${clip.height / dpr}px`;
+        sheet.style.backgroundImage = `url("${clip.image}")`;
+        sheet.style.backgroundSize = `${clip.width / dpr}px ${clip.height / dpr}px`;
+        setFrame(clip.frames[0]);
+      }
+
+      function enterIdle() {
+        state = "Idle";
+        stateTimer = randomBetween(1500, 3200);
+        reportActivity(state);
+        applyClip("idle");
+      }
+
+      function enterWalk() {
+        state = "Walking";
+        stateTimer = randomBetween(1800, 3600);
+        reportActivity(state);
+        applyClip("walk");
+      }
+
+      function enterDance() {
+        state = "Dancing";
+        reportActivity(state);
+        applyClip("dance");
+      }
+
+      function enterFallingAsleep() {
+        state = "FallingAsleep";
+        reportActivity(state);
+        applyClip("fallAsleep");
+      }
+
+      function enterSleeping() {
+        state = "Sleeping";
+        stateTimer = randomBetween(5000, 9000);
+        reportActivity(state);
+        applyClip("sleepLoop");
+      }
+
+      function enterWakingUp() {
+        state = "WakingUp";
+        reportActivity(state);
+        applyClip("wakeUp");
+      }
+
+      function enterDragged() {
+        state = "Dragged";
+        reportActivity(state);
+        applyClip("dragged");
+      }
+
+      function tickClip(deltaMs) {
+        const clip = CLIPS[currentClipName];
+        const frameDuration = 1000 / clip.fps;
+
+        clipTimer += deltaMs;
+        while (clipTimer >= frameDuration) {
+          clipTimer -= frameDuration;
+          currentFrameIndex += 1;
+
+          if (currentFrameIndex >= clip.frames.length) {
+            if (clip.loop) {
+              currentFrameIndex = 0;
+            } else {
+              currentFrameIndex = clip.frames.length - 1;
+              onClipFinished(currentClipName);
+              return;
+            }
+          }
+
+          setFrame(clip.frames[currentFrameIndex]);
+        }
+      }
+
+      function onClipFinished(clipName) {
+        if (clipName === "fallAsleep" && state === "FallingAsleep") {
+          enterSleeping();
+        } else if (clipName === "wakeUp" && state === "WakingUp") {
+          enterIdle();
+        }
+      }
+
+      function updateState(deltaMs) {
+        if (dragActive) {
+          return;
+        }
+
+        if (musicActive) {
+          if (state !== "Dancing") {
+            enterDance();
+          }
+          return;
+        }
+
+        if (state === "Idle" || state === "Walking" || state === "Sleeping") {
+          stateTimer -= deltaMs;
+        }
+
+        if (state === "Idle" && stateTimer <= 0) {
+          if (Math.random() < 0.35) {
+            enterFallingAsleep();
+          } else {
+            enterWalk();
+          }
+        } else if (state === "Walking" && stateTimer <= 0) {
+          enterIdle();
+        } else if (state === "Sleeping" && stateTimer <= 0) {
+          enterWakingUp();
+        }
+      }
+
+      window.setDragActive = function setDragActive(active) {
+        dragActive = active;
+
+        if (dragActive) {
+          enterDragged();
+        } else {
+          if (musicActive) {
+            enterDance();
+          } else {
+            enterIdle();
+          }
+        }
+      };
+
+      window.setMusicActive = function setMusicActive(active) {
+        musicActive = active;
+
+        if (dragActive) {
+          return;
+        }
+
+        if (musicActive) {
+          enterDance();
+        } else if (state === "Dancing") {
+          enterIdle();
+        }
+      };
+
+      window.setFacing = function setFacing(nextFacing) {
+        facing = nextFacing === "Right" ? "Right" : "Left";
+        renderFacing();
+      };
+
+      window.finishWalk = function finishWalk() {
+        if (state === "Walking" && !dragActive && !musicActive) {
+          enterIdle();
+        }
+      };
+
+      function loop(now) {
+        const deltaMs = Math.min(now - lastTick, 80);
+        lastTick = now;
+        tickClip(deltaMs);
+        updateState(deltaMs);
+        requestAnimationFrame(loop);
+      }
+
+      enterIdle();
+      renderFacing();
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>

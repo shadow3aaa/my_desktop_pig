@@ -32,3 +32,55 @@ body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+
+.android-launcher {
+  width: 100vw;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top, rgba(255, 214, 102, 0.22), transparent 38%),
+    linear-gradient(180deg, #fff9f0 0%, #ffe6d5 100%);
+}
+
+.android-panel {
+  width: min(100%, 320px);
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 40px rgba(87, 45, 0, 0.14);
+  color: #5f3416;
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+}
+
+.android-panel h1 {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+
+.android-panel p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.android-status {
+  min-height: 48px;
+  font-weight: 600;
+}
+
+.android-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.android-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: #f58a4b;
+  color: #fffdf7;
+  font: inherit;
+}
