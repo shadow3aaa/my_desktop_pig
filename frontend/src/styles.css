@@ -1,0 +1,34 @@
+:root {
+  color-scheme: light;
+  --pet-logical-size: 120px;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  cursor: default;
+}
+
+.pet-shell {
+  width: var(--pet-logical-size);
+  height: var(--pet-logical-size);
+  background: transparent;
+}
+
+.pet-shell canvas {
+  display: block;
+  width: var(--pet-logical-size);
+  height: var(--pet-logical-size);
+  background: transparent;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
