@@ -50,8 +50,7 @@ async function bootAndroidLauncher(container: HTMLElement): Promise<void> {
   container.className = "android-launcher";
   container.innerHTML = `
     <section class="android-panel">
-      <h1>安卓悬浮猪原型</h1>
-      <p>第一阶段先用原生悬浮窗骨架，不直接复用桌面 Phaser 窗口。</p>
+      <h1>小猪桌宠</h1>
       <p class="android-status" data-role="status">正在检查权限...</p>
       <div class="android-actions">
         <button type="button" data-action="request">申请悬浮窗权限</button>
