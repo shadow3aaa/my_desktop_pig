@@ -1,5 +1,7 @@
 # 小猪桌面宠物
 
+<video src="https://github.com/user-attachments/assets/919a52a3-522c-47b9-bc15-3abf69efbbaf" controls muted playsinline width="360"></video>
+
 一个简单的小猪桌面宠物，基于 Tauri。
 
 小猪形象基于 Google 的 Noto Emoji（猪表情）素材改编。
