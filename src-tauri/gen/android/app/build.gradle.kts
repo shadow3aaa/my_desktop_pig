@@ -93,6 +93,6 @@ apply(from = "tauri.build.gradle.kts")
 // Direct Gradle builds must generate the same overlay used by Tauri CLI builds.
 val sharedPetFrontend by tasks.registering(Exec::class) {
     workingDir(file("../../../.."))
-    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "npm.cmd" else "npm", "run", "build")
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "bun.exe" else "bun", "run", "build")
 }
 tasks.named("preBuild").configure { dependsOn(sharedPetFrontend) }

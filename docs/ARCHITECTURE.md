@@ -28,26 +28,26 @@ flowchart LR
 
 显示尺寸统一使用逻辑像素（Android 为 dp），窗口坐标和边界使用物理像素，`scaleFactor` 明确连接两者。SVG 会跟随窗口尺寸缩放；速度跟随窗口物理尺寸换算，保持不同 DPR 下的逻辑移动速度。Windows 移动队列最多一个请求在途，并合并后续帧；进入原生拖拽前先排空旧请求。
 
-Android 的 `pet.js` / `pet.css` 和入口 HTML 从共享源码自动构建。`npm run build` 同时生成桌面资源及悬浮窗 IIFE，后者通过普通 script 标签加载，避免 file URL 下的 ES 模块 CORS 问题。直接 Gradle 构建的 preBuild 也调用这条构建流程。旧六张 Android 精灵表不再打包。Apache LICENSE 和角色 NOTICE 随两端资源一起打包。
+Android 的 `pet.js` / `pet.css` 和入口 HTML 从共享源码自动构建。`bun run build` 同时生成桌面资源及悬浮窗 IIFE，后者通过普通 script 标签加载，避免 file URL 下的 ES 模块 CORS 问题。直接 Gradle 构建的 preBuild 也调用这条构建流程。旧六张 Android 精灵表不再打包。Apache LICENSE 和角色 NOTICE 随两端资源一起打包。
 
 隐藏悬浮窗时，移除音频监听、屏幕 receiver 和配置回调，取消待发送移动，注销 bridge 并销毁 WebView。每个桥接实例带有创建代号，旧 WebView 回调无法移动新浮窗。屏幕关闭和页面隐藏会停止时钟；恢复时重置 delta，避免积累离线时间后突然跳跃。
 
 运行入口和控件：桌面托盘支持待机、散步、跳舞、睡觉、唤醒、暂停和尺寸；键盘支持 S/D/P/Escape。Android 启动页保留权限、显示/隐藏控制，增加睡眠、暂停和动作控制；浮窗可拖动，双击切换睡眠。开发页控件只出现在普通浏览器宿主中。
 
-构建：
+构建使用 Bun 1.3.14，`bun.lock` 锁定依赖，`bunfig.toml` 的 `[run].bun = true` 让 CLI 默认使用 Bun 运行：
 
 ```powershell
-npm ci
-npm run lint
-npm test
-npm run build
-npm run tauri -- build --debug --no-bundle
+bun install --frozen-lockfile
+bun run lint
+bun run test
+bun run build
+bun run tauri build --debug --no-bundle
 ```
 
 Android 使用已有 JDK、SDK 和 NDK：
 
 ```powershell
-npm run tauri -- android build --debug --target aarch64 x86_64 --apk --ci
+bun run tauri android build --debug --target aarch64 x86_64 --apk --ci
 ```
 
 版本号在 package.json、Cargo.toml 和 Tauri 配置中统一为 0.2.0。Android 版本信息由 Tauri 生成（versionCode 2000）。本版本仍需按验收记录完成真机和原生交互检查，尚未正式发布或部署。

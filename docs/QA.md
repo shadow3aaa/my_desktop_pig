@@ -23,6 +23,8 @@
 
 ## 检查结果
 
+下表记录重构分支使用 npm 时的历史验收。当前构建命令已迁移到 Bun，迁移后的检查见文末。
+
 | 检查 | 结果 |
 | --- | --- |
 | `npm run lint` | 通过，TypeScript 无错误 |
@@ -58,17 +60,34 @@ Android APK 已在本任务创建的只读临时 Pixel_10a 模拟器中安装并
 证据：`build/windows-final.log`、`build/android-instrumentation.log`、`build/android-errors.log`、`build/qa-sleep.png`、`build/qa-dance.png`。源码仓库在独立 `checkout` 下，所有改动可用 Git 审阅。
 
 ```powershell
-npm ci
-npm run lint
-npm test
-npm run build
+bun install --frozen-lockfile
+bun run lint
+bun run test
+bun run build
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-npm run tauri -- build --debug --no-bundle
-npm run tauri -- android build --debug --target aarch64 x86_64 --apk --ci
+bun run tauri build --debug --no-bundle
+bun run tauri android build --debug --target aarch64 x86_64 --apk --ci
 ```
 
 Android 验证工具链为 JDK 21.0.8、SDK 36、NDK 27.0.12077973。构建前配置 `JAVA_HOME` 和 Android SDK 环境变量。
+
+## Bun 迁移检查（2026-10-09）
+
+项目使用 Bun 1.3.14 进行依赖安装、脚本执行和核心测试。`bun.lock` 从原 `package-lock.json` 迁移，逐项核对保留了 79 项依赖的锁定版本；仓库仅维护 `bun.lock`。Tauri 构建钩子、Gradle 前端任务及 Android Studio 的 Rust 构建回调均已改用 Bun。
+
+| 检查 | 结果 |
+| --- | --- |
+| `bun install --frozen-lockfile` | 通过 |
+| 隔离目录全新安装与核心测试 | 通过，未复用原 npm 的 `node_modules` |
+| `bun run test` | 10/10 通过，使用 Bun 测试运行器 |
+| `bun run build` | 通过，包括 TypeScript 检查、桌面资源及 Android overlay 生成 |
+| `bun run dev --host 127.0.0.1` | 开发服务器启动成功 |
+| `bun run tauri android android-studio-script --help` | Bun 正确转发 Android Studio 回调命令 |
+| `bun run tauri build --debug --no-bundle` | Windows 调试构建通过，构建钩子使用 Bun |
+| Gradle `buildSrc` 的 `compileKotlin --offline` | 通过，Android Studio 构建回调编译成功；保留既有 `project.exec` 弃用警告 |
+
+以上检查不代表重新完成历史记录中的真机、模拟器或原生交互验收。
 
 Android 集成测试在 Android 源工程目录执行 `:app:assembleUniversalDebugAndroidTest`，安装应用和测试 APK 后运行 `adb shell am instrument -w -e class com.shadow3.mydesktoppig.OverlayRuntimeTest com.shadow3.mydesktoppig.test/androidx.test.runner.AndroidJUnitRunner`。测试系统需事先授予本应用悬浮窗权限。此次只对临时模拟器授予权限，未连接或改动实体手机。
 
