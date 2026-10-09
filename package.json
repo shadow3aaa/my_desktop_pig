@@ -1,21 +1,23 @@
 {
   "name": "my-desktop-pig",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run lint && vite build && vite build --mode overlay && node scripts/sync-overlay.mjs",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "lint": "tsc --noEmit",
+    "test": "node --test tests/core.test.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "phaser": "^3.90.0"
+    "@tauri-apps/api": "^2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@types/node": "^22.13.10",
+    "esbuild": "^0.25.12",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
   }

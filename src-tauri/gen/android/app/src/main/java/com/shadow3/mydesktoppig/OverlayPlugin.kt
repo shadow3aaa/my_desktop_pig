@@ -8,12 +8,15 @@ import android.provider.Settings
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
 
 data class OverlayPermissionStatus(val granted: Boolean)
 data class OverlayVisibleStatus(val visible: Boolean)
+@InvokeArg
+class OverlayActionArgs { var action: String = "idle" }
 
 @TauriPlugin
 class OverlayPlugin(private val activity: Activity) : Plugin(activity) {
@@ -57,18 +60,28 @@ class OverlayPlugin(private val activity: Activity) : Plugin(activity) {
       return
     }
 
-    OverlayController.show(activity.applicationContext)
-    invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible()))
+    activity.runOnUiThread {
+      try { OverlayController.show(activity.applicationContext); invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible())) }
+      catch (error: RuntimeException) { invoke.reject(error.message ?: "Unable to show overlay") }
+    }
   }
 
   @Command
   fun hideOverlay(invoke: Invoke) {
-    OverlayController.hide(activity.applicationContext)
-    invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible()))
+    activity.runOnUiThread {
+      OverlayController.hide(activity.applicationContext)
+      invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible()))
+    }
   }
 
   @Command
   fun overlayVisible(invoke: Invoke) {
     invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible()))
+  }
+
+  @Command
+  fun overlayAction(invoke: Invoke) {
+    val args = invoke.parseArgs(OverlayActionArgs::class.java)
+    activity.runOnUiThread { OverlayController.action(args.action); invoke.resolveObject(OverlayVisibleStatus(OverlayController.isVisible())) }
   }
 }

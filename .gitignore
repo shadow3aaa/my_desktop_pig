@@ -3,3 +3,17 @@
 /node_modules
 /dist
 /.tmp_tauri
+/dist-overlay
+/src-tauri/gen/android/app/src/main/assets/overlay/pet.js
+/src-tauri/gen/android/app/src/main/assets/overlay/pet.css
+/src-tauri/gen/android/app/src/main/assets/overlay/NOTICE.txt
+/src-tauri/gen/android/app/src/main/assets/overlay/LICENSE
+/src-tauri/gen/android/.idea
+/src-tauri/gen/android/.gradle
+/src-tauri/gen/android/buildSrc/.kotlin
+/src-tauri/gen/android/app/build
+/src-tauri/gen/android/build
+/src-tauri/gen/android/local.properties
+/src-tauri/gen/android/app/tauri.build.gradle.kts
+/src-tauri/gen/schemas
+/qa-output

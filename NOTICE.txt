@@ -1,0 +1,10 @@
+Piggy vector preview — October 2026
+
+The pig character is adapted from emoji_u1f416.svg in shadow3aaa/my_desktop_pig:
+https://github.com/shadow3aaa/my_desktop_pig/blob/a9396b0899819903436ff116265b9efc4241d54e/emoji_u1f416.svg
+Original imagery: Google Noto Emoji, Apache License 2.0.
+https://github.com/googlefonts/noto-emoji
+
+This adaptation separates limbs and facial controls, redraws the body's leg junction, and adds rounded articulated limb curves and continuous lower-body contour morphing for procedural SVG animation. It does not contain rasterized sprite frames. The original Noto-derived silhouette and palette are intentionally retained.
+
+The browser prototype is separate from the existing desktop/Android app. No project repository changes or native integration are included.

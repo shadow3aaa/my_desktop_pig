@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="pig-title"><title id="pig-title">可分层驱动的 Noto 风格小猪</title>
+<!-- Adapted from Google Noto Emoji, Apache-2.0. See NOTICE.txt. Each transform and articulated curve below is owned by SvgRenderer; rounded limb roots remain overlapped by the body. -->
+<defs><clipPath id="flank-clip" clipPathUnits="userSpaceOnUse"><use id="flank-clip-body" href="#body-shape"/></clipPath></defs>
+<g id="facing"><g id="body-motion"><g id="palette">
+ <g id="far-limbs">
+ <g id="leg-rear-far"><path id="limb-rear-far" fill="none" stroke="#ffa8a7" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" d="M77 78 Q77 89 77 99.5"/></g>
+ <g id="leg-front-far"><path id="limb-front-far" fill="none" stroke="#ffd2b1" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round" d="M28 80 Q28 98 28 111.5"/></g>
+ </g>
+ <g id="near-limbs">
+ <g id="leg-rear-near"><path id="limb-rear-near" fill="none" stroke="#ffd2b1" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" d="M99 73 Q100 89 100 100.5"/></g>
+ <g id="leg-front-near"><path id="limb-front-near" fill="none" stroke="#ffd2b1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" d="M54 80 Q54 99 54 113.5"/></g>
+ </g>
+ <g id="torso">
+ <g id="tail"><path fill="#ffd2b1" d="M119.79 19.65c1.78-.38 4.13.19 4.22-1.6.11-2.16-2.63-3.57-5.91-2.63-3.27.93-4.32 3.75-4.32 3.75s-3.71-1.73-6.95.84c-3.66 2.91-3.94 9.01-3.94 9.01l5.16 4.97s.13-5.76.94-7.88c1.03-2.72 2.82-2.25 2.82-2.25s-1.97 5.44.75 8.73c3.26 3.94 10.51 2.25 9.48-4.41-.61-3.96-4.41-6.38-4.41-6.38s.82-2.47 2.16-2.75zm-2.72 11.17c-2.99.34-2.06-4.88-1.5-6.38 2.44 1.03 3.94 6.09 1.5 6.38z"/></g>
+ <path id="body-shape" fill="#ffd2b1" d="M45.97 24.86c18.19-7.4 54.05-9.08 66.17 10.28 12.25 19.57 3.8 32.1 2.39 35.62-2.02 5.05-7.38 17.34-16.44 19.98-7.06 2.64-14.12 1.86-21.71 3.07-6.04.96-27.4 14.32-52.65 3.24C-1.61 86.1 4.3 62.02 10.5 54.98s5.49-8.45 5.49-8.45-6.19 1.55-3.8-3.38 8.59-13.09 9.71-13.8c1.13-.7 4.79-1.83 6.76-.56s1.97 3.1 1.97 3.1 3.21-2.11 15.31-7.03z"/>
+ <g id="ear-near"><path fill="#e6508f" d="M62.82 43.58c-.75-1.63-4.58 0-5.54 2.44-1.22 3.1 0 6.1 1.78 9.48 1.22 2.31 6.76 9.48 13.14 7.98 7.42-1.75 5.35-13.33 5.07-14.64-.28-1.31-1.17-3.06-2.72-2.82-1.78.28-.93 3.24-.84 5.44.09 2.44.19 6.57-2.72 7.23-3.11.7-5.31-1.34-7.04-4.13-1.69-2.72-3.66-4.79-3.1-7.32.35-1.56 2.53-2.44 1.97-3.66z"/></g>
+ <g id="ear-far"><path fill="#e6508f" d="M24.81 40.48c-1.42-.55-3.1 1.6-4.69 2.91s-4.5 3-5.63 1.6c-1.17-1.47 2.52-5.32 4.69-9.01 1.88-3.19 3.64-6.85 6.1-7.04 3.66-.28.81-1.92-1.88-1.41-1.97.38-4.69 2.16-6.19 5.16S8.57 43.3 10.92 46.77c2.7 4 8.63 2.16 11.26 0 2.63-2.16 4.32-5.63 2.63-6.29z"/></g>
+ <g id="face"><g id="snout"><path fill="#ff7d86" d="M29.5 69.2c-5.16-.94-13.38.5-13.98 6.29-.47 4.5 2.44 9.95 11.92 12.01 9.48 2.06 14.17-1.5 14.64-6.57.47-5.06-4.88-10.32-12.58-11.73z"/><path fill="#2d2d2b" d="M26.22 77.27c.2 2.27-.42 3.91-1.78 4.04-1.36.12-3.27-1.48-3.47-3.75-.2-2.27.4-4.13 2.16-4.13 1.36 0 2.88 1.57 3.09 3.84z"/><ellipse fill="#2d2d2b" cx="32.35" cy="78.96" rx="2.62" ry="3.94" transform="rotate(5.4 32.35 78.96)"/></g>
+ <g id="eye-near"><ellipse fill="#2d2d2b" cx="52.65" cy="66.23" rx="4.1" ry="4.83" transform="rotate(5.65 52.65 66.23)"/></g>
+ <g id="eye-far"><ellipse fill="#2d2d2b" cx="22.84" cy="60.19" rx="4.23" ry="4.78" transform="rotate(5.65 22.84 60.19)"/></g>
+ <g id="eyes-closed" opacity="0" fill="none" stroke="#564740" stroke-width="2.1" stroke-linecap="round"><path d="M48.8 65.3q3.7 4.5 7.6.5M19.1 59.1q3.9 4.7 7.6.5"/></g>
+ </g></g>
+ <g id="flank-limbs" opacity="0" clip-path="url(#flank-clip)">
+ <g id="side-leg-rear-near"><path id="side-limb-rear-near" fill="none" stroke="#ffd2b1" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" d="M99 73 Q100 89 100 100.5"/></g>
+ <g id="side-leg-front-near"><path id="side-limb-front-near" fill="none" stroke="#ffd2b1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" d="M54 80 Q54 99 54 113.5"/></g>
+ </g>
+ <g id="fold-lines" opacity="0" fill="none" stroke="#e7a58a" stroke-width="1.45" stroke-linecap="round"><path id="fold-front" d="M50 101C46 104 46 109 52 110C58 111 64 108 67 105M54 99Q56 104 62 104"/><path id="fold-rear" d="M101 88C109 92 110 101 103 105C97 109 90 107 85 103M99 98Q92 96 87 101"/></g></g></g></g></svg>

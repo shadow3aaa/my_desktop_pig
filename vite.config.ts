@@ -4,10 +4,15 @@ import { defineConfig } from "vite";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(({ mode }) => ({
   root: resolve(__dirname, "frontend"),
-  publicDir: resolve(__dirname, "assets"),
-  build: {
+  publicDir: false,
+  build: mode === 'overlay' ? {
+    outDir: resolve(__dirname, 'dist-overlay'),
+    emptyOutDir: true,
+    lib: { entry: resolve(__dirname, 'frontend/src/overlay.ts'), name: 'PigOverlay', formats: ['iife'], fileName: () => 'pet.js', cssFileName: 'pet' },
+    target: 'es2019',
+  } : {
     outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,
   },

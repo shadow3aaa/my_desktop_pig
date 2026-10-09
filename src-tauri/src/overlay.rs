@@ -138,3 +138,21 @@ pub fn overlay_visible<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
         Ok(false)
     }
 }
+
+#[tauri::command]
+pub fn overlay_action<R: Runtime>(app: AppHandle<R>, action: String) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        let plugin = android_overlay_plugin(&app)?;
+        let response: VisibleStatus = plugin
+            .0
+            .run_mobile_plugin("overlayAction", serde_json::json!({"action": action}))
+            .map_err(|error| error.to_string())?;
+        Ok(response.visible)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, action);
+        Err("overlay actions are only available on Android".to_string())
+    }
+}

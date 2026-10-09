@@ -1,362 +1,260 @@
 package com.shadow3.mydesktoppig
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.PixelFormat
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
-import android.graphics.Color
-import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import kotlin.math.abs
-import kotlin.math.max
+import org.json.JSONObject
+import kotlin.math.hypot
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
+/** Native overlay resources and input only. The bundled pet runtime owns all behavior/motion. */
 object OverlayController {
-  private const val WALK_SPEED = 90f
-  private const val SCREEN_PADDING = 16f
-  private const val ARRIVAL_DISTANCE = 4f
-  private const val MIN_TRAVEL_DISTANCE = 40f
-
-  private var overlayView: View? = null
-  private var layoutParams: WindowManager.LayoutParams? = null
-  private var overlayActivity: String = "Idle"
-  private var posX = 120f
-  private var posY = 240f
-  private var facing = "Left"
-  private var walkTargetX: Float? = null
+  private const val TAG = "PigOverlay"
+  private val handler = Handler(Looper.getMainLooper())
+  private var webView: WebView? = null
+  private var params: WindowManager.LayoutParams? = null
+  private var windowManager: WindowManager? = null
+  private var owner: Context? = null
+  private var logicalSize = 120
   private var dragging = false
-  private var musicPlaying = false
-  private var pauseAutoUntilMs = 0L
-  private var lastFrameAtMs = 0L
+  private var generation = 0
+  private var pageReady = false
+  @Volatile private var contextJson = "{}"
+  @Volatile private var musicActive = false
   private var audioManager: AudioManager? = null
-  private var playbackCallback: AudioManager.AudioPlaybackCallback? = null
-  private val mainHandler = Handler(Looper.getMainLooper())
-  private val movementRunnable = object : Runnable {
-    override fun run() {
-      val view = overlayView
-      val params = layoutParams
-      if (view == null || params == null) {
-        return
-      }
+  private var audioCallback: AudioManager.AudioPlaybackCallback? = null
+  private var pendingMove: Pair<Int, Int>? = null
 
-      val now = SystemClock.uptimeMillis()
-      val deltaSeconds =
-        if (lastFrameAtMs == 0L) 0f else ((now - lastFrameAtMs).coerceAtMost(48) / 1000f)
-      lastFrameAtMs = now
-
-      if (
-        overlayActivity == "Walking" &&
-        !dragging &&
-        now >= pauseAutoUntilMs
-      ) {
-        val metrics = view.resources.displayMetrics
-        if (walkTargetX == null) {
-          walkTargetX = chooseWalkTargetX(metrics.widthPixels, params.width)
-          updateFacing(if ((walkTargetX ?: posX) >= posX) "Right" else "Left")
-        }
-
-        val targetX = walkTargetX ?: posX
-        val deltaX = targetX - posX
-
-        if (abs(deltaX) <= ARRIVAL_DISTANCE) {
-          posX = targetX
-          params.x = posX.roundToInt()
-          params.y = posY.roundToInt()
-          try {
-            (view.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
-              .updateViewLayout(view, params)
-          } catch (_: IllegalArgumentException) {
-            return
-          }
-          walkTargetX = null
-          overlayActivity = "Idle"
-          dispatchToOverlay("window.finishWalk && window.finishWalk()")
-        } else {
-          val step = minOf(abs(deltaX), WALK_SPEED * deltaSeconds)
-          posX += if (deltaX > 0f) step else -step
-          params.x = posX.roundToInt()
-          params.y = posY.roundToInt()
-          try {
-            (view.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
-              .updateViewLayout(view, params)
-          } catch (_: IllegalArgumentException) {
-            return
-          }
-        }
-      }
-
-      mainHandler.postDelayed(this, 16)
-    }
+  private fun send(event: JSONObject) {
+    if (pageReady) webView?.evaluateJavascript("window.petHost && window.petHost.receive($event)", null)
   }
-
-  private fun dispatchToOverlay(script: String) {
-    val webView = overlayView as? WebView ?: return
-    webView.post {
-      webView.evaluateJavascript(script, null)
-    }
+  private fun contextEvent() = JSONObject().put("type", "context").put("context", JSONObject(contextJson))
+  private fun refreshContext() {
+    val view = webView ?: return
+    val layout = params ?: return
+    val metrics = view.resources.displayMetrics
+    val screen = if (Build.VERSION.SDK_INT >= 30) windowManager?.currentWindowMetrics?.bounds else null
+    contextJson = JSONObject()
+      .put("position", JSONObject().put("x", layout.x).put("y", layout.y))
+      .put("windowSize", JSONObject().put("width", layout.width).put("height", layout.height))
+      .put("monitor", JSONObject().put("x", screen?.left ?: 0).put("y", screen?.top ?: 0)
+        .put("width", screen?.width() ?: metrics.widthPixels).put("height", screen?.height() ?: metrics.heightPixels))
+      .put("scaleFactor", metrics.density.toDouble()).toString()
   }
-
-  private fun pushDragState() {
-    dispatchToOverlay("window.setDragActive(${if (dragging) "true" else "false"})")
+  private fun updateLayout() {
+    val view = webView ?: return
+    val layout = params ?: return
+    try { windowManager?.updateViewLayout(view, layout); refreshContext() }
+    catch (error: IllegalArgumentException) { Log.e(TAG, "Overlay layout unavailable", error) }
   }
-
-  private fun pushMusicState() {
-    dispatchToOverlay("window.setMusicActive(${if (musicPlaying) "true" else "false"})")
+  private val moveRunnable = Runnable {
+    val point = pendingMove
+    pendingMove = null
+    if (!dragging && point != null) { params?.x = point.first; params?.y = point.second; updateLayout() }
   }
-
-  private fun pushFacingState() {
-    dispatchToOverlay("window.setFacing(\"$facing\")")
+  private fun setMusic(active: Boolean) {
+    if (musicActive == active) return
+    musicActive = active
+    send(JSONObject().put("type", "music").put("playing", active))
   }
-
-  private fun syncOverlayState() {
-    pushDragState()
-    pushMusicState()
-    pushFacingState()
-  }
-
-  private fun updateFacing(nextFacing: String) {
-    if (facing == nextFacing) {
-      return
-    }
-
-    facing = nextFacing
-    pushFacingState()
-  }
-
-  private fun updateFacingFromVelocity() {
-    updateFacing(if ((walkTargetX ?: posX) >= posX) "Right" else "Left")
-  }
-
-  private fun chooseWalkTargetX(screenWidth: Int, windowWidth: Int): Float {
-    val minX = SCREEN_PADDING
-    val maxX = max(screenWidth - windowWidth, 0).toFloat() - SCREEN_PADDING
-
-    if (maxX <= minX) {
-      return posX
-    }
-
-    repeat(6) {
-      val candidate = Random.nextFloat() * (maxX - minX) + minX
-      if (abs(candidate - posX) >= MIN_TRAVEL_DISTANCE) {
-        return candidate
-      }
-    }
-
-    return if (posX < (minX + maxX) * 0.5f) maxX else minX
-  }
-
-  private fun setMusicPlaying(active: Boolean) {
-    if (musicPlaying == active) {
-      return
-    }
-
-    musicPlaying = active
-    pushMusicState()
-  }
-
-  private fun configLooksLikeMusic(config: AudioPlaybackConfiguration): Boolean {
-    val attributes = config.audioAttributes
-    return attributes.usage == AudioAttributes.USAGE_MEDIA ||
-      attributes.contentType == AudioAttributes.CONTENT_TYPE_MUSIC
-  }
-
-  private fun resolveMusicPlaying(configurations: List<AudioPlaybackConfiguration>): Boolean {
-    return configurations.any { config ->
-      configLooksLikeMusic(config)
-    }
-  }
-
-  private fun startPlaybackMonitoring(context: Context) {
-    val manager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+  private fun startAudio(context: Context) {
+    val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     audioManager = manager
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    if (Build.VERSION.SDK_INT >= 26) {
       val callback = object : AudioManager.AudioPlaybackCallback() {
         override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>) {
-          setMusicPlaying(resolveMusicPlaying(configs))
+          if (audioCallback !== this) return
+          setMusic(configs.any { it.audioAttributes.usage == AudioAttributes.USAGE_MEDIA || it.audioAttributes.contentType == AudioAttributes.CONTENT_TYPE_MUSIC })
         }
       }
-
-      playbackCallback = callback
-      manager.registerAudioPlaybackCallback(callback, mainHandler)
-      setMusicPlaying(resolveMusicPlaying(manager.activePlaybackConfigurations))
-      return
-    }
-
-    setMusicPlaying(manager.isMusicActive)
+      audioCallback = callback
+      manager.registerAudioPlaybackCallback(callback, handler)
+      setMusic(manager.isMusicActive)
+    } else handler.post(audioPoll)
   }
-
-  private fun stopPlaybackMonitoring() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val manager = audioManager
-      val callback = playbackCallback
-      if (manager != null && callback != null) {
-        manager.unregisterAudioPlaybackCallback(callback)
-      }
+  private val audioPoll = object : Runnable {
+    override fun run() { if (webView != null) { setMusic(audioManager?.isMusicActive == true); handler.postDelayed(this, 1200) } }
+  }
+  private val screenReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      send(JSONObject().put("type", "suspend").put("suspended", intent?.action == Intent.ACTION_SCREEN_OFF))
     }
-
-    audioManager = null
-    playbackCallback = null
-    musicPlaying = false
+  }
+  private val configurationCallback = object : ComponentCallbacks {
+    override fun onConfigurationChanged(config: Configuration) {
+      val density = webView?.resources?.displayMetrics?.density ?: return
+      params?.width = (logicalSize * density).roundToInt()
+      params?.height = (logicalSize * density).roundToInt()
+      updateLayout()
+      send(contextEvent())
+    }
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onLowMemory() { webView?.clearCache(false) }
   }
 
   @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
   fun show(context: Context) {
-    if (overlayView != null) {
-      return
-    }
-
-    val windowManager =
-      context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-    val sizePx = 120
-
-    layoutParams = WindowManager.LayoutParams(
-      sizePx,
-      sizePx,
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-      } else {
-        @Suppress("DEPRECATION")
-        WindowManager.LayoutParams.TYPE_PHONE
-      },
-      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-      PixelFormat.TRANSLUCENT,
-    ).apply {
-      gravity = Gravity.TOP or Gravity.START
-      x = 120
-      y = 240
-    }
-    posX = layoutParams?.x?.toFloat() ?: 120f
-    posY = layoutParams?.y?.toFloat() ?: 240f
-    overlayActivity = "Idle"
-    facing = "Left"
-    walkTargetX = null
+    check(Looper.myLooper() == Looper.getMainLooper())
+    if (webView != null) return
+    owner = context
+    windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    val size = (logicalSize * context.resources.displayMetrics.density).roundToInt()
+    params = WindowManager.LayoutParams(size, size,
+      if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, PixelFormat.TRANSLUCENT)
+      .apply { gravity = Gravity.TOP or Gravity.START; x = size; y = size * 2 }
+    generation++
+    val token = generation
+    pageReady = false
     dragging = false
-    musicPlaying = false
-    pauseAutoUntilMs = 0L
-    lastFrameAtMs = 0L
-
-    val webView = WebView(context).apply {
+    val view = WebView(context).apply {
       setBackgroundColor(Color.TRANSPARENT)
       isVerticalScrollBarEnabled = false
       isHorizontalScrollBarEnabled = false
       settings.javaScriptEnabled = true
       settings.domStorageEnabled = false
-      settings.cacheMode = WebSettings.LOAD_NO_CACHE
       settings.allowFileAccess = true
       settings.allowContentAccess = false
       settings.useWideViewPort = true
-      settings.loadWithOverviewMode = false
       setLayerType(View.LAYER_TYPE_HARDWARE, null)
+      addJavascriptInterface(OverlayBridge(token), "PigOverlayBridge")
       webViewClient = object : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean = true
         override fun onPageFinished(view: WebView?, url: String?) {
-          syncOverlayState()
+          if (token != generation || view !== webView) return
+          pageReady = true
+          refreshContext()
+          send(contextEvent())
+          send(JSONObject().put("type", "music").put("playing", musicActive))
         }
       }
-      addJavascriptInterface(OverlayJavascriptBridge(), "PigOverlayBridge")
-      setOnTouchListener(DragTouchListener(windowManager))
-      loadUrl("file:///android_asset/overlay/index.html")
+      setOnTouchListener(DragTouch())
     }
-
-    overlayView = webView
-    windowManager.addView(webView, layoutParams)
-    startPlaybackMonitoring(context)
-    mainHandler.removeCallbacks(movementRunnable)
-    mainHandler.post(movementRunnable)
+    webView = view
+    refreshContext()
+    try { windowManager?.addView(view, params) }
+    catch (error: RuntimeException) { hide(context); throw error }
+    startAudio(context)
+    context.registerComponentCallbacks(configurationCallback)
+    val filter = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) }
+    if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    else @Suppress("DEPRECATION") context.registerReceiver(screenReceiver, filter)
+    view.loadUrl("file:///android_asset/overlay/index.html")
   }
-
+  fun action(action: String) {
+    if (action in setOf("idle", "walk", "dance", "sleep", "wake", "toggle-sleep", "toggle-pause", "reduce"))
+      send(JSONObject().put("type", "action").put("action", action))
+  }
   fun hide(context: Context) {
-    val view = overlayView ?: return
-    val windowManager =
-      context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-    mainHandler.removeCallbacks(movementRunnable)
-    stopPlaybackMonitoring()
-    windowManager.removeView(view)
-    overlayView = null
-    layoutParams = null
-    overlayActivity = "Idle"
+    check(Looper.myLooper() == Looper.getMainLooper())
+    val view = webView ?: return
+    generation++
+    pendingMove = null
+    pageReady = false
+    handler.removeCallbacks(moveRunnable)
+    handler.removeCallbacks(audioPoll)
+    if (Build.VERSION.SDK_INT >= 26) audioCallback?.let { audioManager?.unregisterAudioPlaybackCallback(it) }
+    try { context.unregisterReceiver(screenReceiver) } catch (_: IllegalArgumentException) {}
+    context.unregisterComponentCallbacks(configurationCallback)
+    try { windowManager?.removeView(view) } catch (_: IllegalArgumentException) {}
+    view.stopLoading()
+    view.removeJavascriptInterface("PigOverlayBridge")
+    view.loadUrl("about:blank")
+    view.removeAllViews()
+    view.destroy()
+    webView = null
+    params = null
+    windowManager = null
+    owner = null
+    audioManager = null
+    audioCallback = null
+    musicActive = false
+    dragging = false
   }
+  fun isVisible() = webView != null
 
-  fun isVisible(): Boolean {
-    return overlayView != null
-  }
-
-  private class DragTouchListener(
-    private val windowManager: WindowManager,
-  ) : View.OnTouchListener {
+  private class DragTouch : View.OnTouchListener {
     private var startX = 0
     private var startY = 0
     private var touchX = 0f
     private var touchY = 0f
-
+    private var lastTap = 0L
     override fun onTouch(view: View, event: MotionEvent): Boolean {
-      val params = layoutParams ?: return false
-
-      when (event.action) {
+      val layout = params ?: return false
+      when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
           dragging = true
-          walkTargetX = null
-          pushDragState()
-          startX = params.x
-          startY = params.y
-          touchX = event.rawX
-          touchY = event.rawY
-          return true
+          handler.removeCallbacks(moveRunnable)
+          pendingMove = null
+          startX = layout.x; startY = layout.y; touchX = event.rawX; touchY = event.rawY
+          send(JSONObject().put("type", "drag-start"))
         }
-
         MotionEvent.ACTION_MOVE -> {
-          val deltaX = event.rawX - touchX
-          params.x = startX + (event.rawX - touchX).roundToInt()
-          params.y = startY + (event.rawY - touchY).roundToInt()
-          posX = params.x.toFloat()
-          posY = params.y.toFloat()
-          if (deltaX >= 2f) {
-            updateFacing("Right")
-          } else if (deltaX <= -2f) {
-            updateFacing("Left")
-          }
-          windowManager.updateViewLayout(view, params)
-          return true
+          layout.x = startX + (event.rawX - touchX).roundToInt()
+          layout.y = startY + (event.rawY - touchY).roundToInt()
+          updateLayout(); send(contextEvent())
         }
-
-        MotionEvent.ACTION_UP,
-        MotionEvent.ACTION_CANCEL -> {
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
           dragging = false
-          walkTargetX = null
-          pushDragState()
-          posX = params.x.toFloat()
-          posY = params.y.toFloat()
-          pauseAutoUntilMs = SystemClock.uptimeMillis() + 2500
-          return true
+          refreshContext()
+          send(JSONObject().put("type", "drag-end").put("context", JSONObject(contextJson)))
+          if (event.actionMasked == MotionEvent.ACTION_UP && hypot(event.rawX - touchX, event.rawY - touchY) < 8 * view.resources.displayMetrics.density) {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastTap < 350) { action("toggle-sleep"); lastTap = 0 } else lastTap = now
+          }
         }
+        else -> return false
       }
-
-      return false
+      return true
     }
   }
-
-  private class OverlayJavascriptBridge {
-    @JavascriptInterface
-    fun setActivity(activity: String) {
-      overlayActivity = activity
-      if (overlayActivity == "Walking") {
-        walkTargetX = null
-        updateFacingFromVelocity()
+  private class OverlayBridge(private val token: Int) {
+    @JavascriptInterface fun context() = contextJson
+    @JavascriptInterface fun musicPlaying() = musicActive
+    @JavascriptInterface fun cancelMoves() {
+      handler.post {
+        if (token != generation) return@post
+        pendingMove = null
+        handler.removeCallbacks(moveRunnable)
+      }
+    }
+    @JavascriptInterface fun moveTo(x: Double, y: Double) {
+      if (!x.isFinite() || !y.isFinite()) return
+      handler.post {
+        if (token != generation || dragging) return@post
+        pendingMove = Pair(x.roundToInt(), y.roundToInt())
+        handler.removeCallbacks(moveRunnable)
+        handler.post(moveRunnable)
+      }
+    }
+    @JavascriptInterface fun resize(size: Int) {
+      handler.post {
+        if (token != generation) return@post
+        logicalSize = size.coerceIn(80, 320)
+        val density = webView?.resources?.displayMetrics?.density ?: return@post
+        params?.width = (logicalSize * density).roundToInt(); params?.height = (logicalSize * density).roundToInt()
+        updateLayout(); send(contextEvent())
       }
     }
   }

@@ -38,6 +38,7 @@ android {
         applicationId = "com.shadow3.mydesktoppig"
         minSdk = 24
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
@@ -88,3 +89,10 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
+
+// Direct Gradle builds must generate the same overlay used by Tauri CLI builds.
+val sharedPetFrontend by tasks.registering(Exec::class) {
+    workingDir(file("../../../.."))
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "npm.cmd" else "npm", "run", "build")
+}
+tasks.named("preBuild").configure { dependsOn(sharedPetFrontend) }
