@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="pig-title"><title id="pig-title">可分层驱动的 Noto 风格小猪</title>
 <!-- Adapted from Google Noto Emoji, Apache-2.0. See NOTICE.txt. Each transform and articulated curve below is owned by SvgRenderer; rounded limb roots remain overlapped by the body. -->
-<defs><clipPath id="flank-clip" clipPathUnits="userSpaceOnUse"><use id="flank-clip-body" href="#body-shape"/></clipPath></defs>
+<defs>
+ <clipPath id="sleep-overlap"><use href="#body-shape"/></clipPath>
+ <linearGradient id="sleep-edge-front-tone" gradientUnits="userSpaceOnUse"><stop stop-color="#e7a58a" stop-opacity="0"/><stop offset=".42" stop-color="#e7a58a" stop-opacity="0"/><stop offset=".62" stop-color="#e7a58a"/><stop offset="1" stop-color="#e7a58a"/></linearGradient>
+ <linearGradient id="sleep-edge-rear-tone" gradientUnits="userSpaceOnUse"><stop stop-color="#e7a58a" stop-opacity="0"/><stop offset=".22" stop-color="#e7a58a"/><stop offset="1" stop-color="#e7a58a"/></linearGradient>
+</defs>
 <g id="facing"><g id="body-motion"><g id="palette">
  <g id="far-limbs">
  <g id="leg-rear-far"><path id="limb-rear-far" fill="none" stroke="#ffa8a7" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" d="M77 78 Q77 89 77 99.5"/></g>
@@ -19,9 +23,9 @@
  <g id="eye-near"><ellipse fill="#2d2d2b" cx="52.65" cy="66.23" rx="4.1" ry="4.83" transform="rotate(5.65 52.65 66.23)"/></g>
  <g id="eye-far"><ellipse fill="#2d2d2b" cx="22.84" cy="60.19" rx="4.23" ry="4.78" transform="rotate(5.65 22.84 60.19)"/></g>
  <g id="eyes-closed" opacity="0" fill="none" stroke="#564740" stroke-width="2.1" stroke-linecap="round"><path d="M48.8 65.3q3.7 4.5 7.6.5M19.1 59.1q3.9 4.7 7.6.5"/></g>
- </g></g>
- <g id="flank-limbs" opacity="0" clip-path="url(#flank-clip)">
- <g id="side-leg-rear-near"><path id="side-limb-rear-near" fill="none" stroke="#ffd2b1" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" d="M99 73 Q100 89 100 100.5"/></g>
- <g id="side-leg-front-near"><path id="side-limb-front-near" fill="none" stroke="#ffd2b1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" d="M54 80 Q54 99 54 113.5"/></g>
  </g>
- <g id="fold-lines" opacity="0" fill="none" stroke="#e7a58a" stroke-width="1.45" stroke-linecap="round"><path id="fold-front" d="M50 101C46 104 46 109 52 110C58 111 64 108 67 105M54 99Q56 104 62 104"/><path id="fold-rear" d="M101 88C109 92 110 101 103 105C97 109 90 107 85 103M99 98Q92 96 87 101"/></g></g></g></g></svg>
+ <g id="sleep-joints" opacity="0" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#sleep-overlap)">
+ <path id="sleep-edge-front" stroke="url(#sleep-edge-front-tone)"/>
+ <path id="sleep-edge-rear" stroke="url(#sleep-edge-rear-tone)"/>
+ </g></g>
+</g></g></g></svg>
